@@ -653,16 +653,7 @@ export default function Home() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      {caseSearchType === "semantic" && caseSearch.trim() && (
-                        <Button
-                          size="sm"
-                          onClick={handleSemanticSearch}
-                          className="bg-[#2E6BE6] hover:bg-[#001580] h-9"
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          生成方案
-                        </Button>
-                      )}
+                      {/* CHANGE: Remove semantic search button, enter key directly opens dialog */}
                     </div>
                   </div>
                   <Button onClick={() => setShowNewCase(true)}>

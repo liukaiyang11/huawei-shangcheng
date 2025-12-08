@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Brain, ExternalLink, Database, Globe, CheckCircle2, Loader2, Download, Sparkles } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Brain, ExternalLink, Database, Globe, CheckCircle2, Loader2, Download, Sparkles, Send } from "lucide-react"
 import type { Case } from "@/types"
 
 interface ReasoningStep {
@@ -26,6 +29,16 @@ interface KnowledgeSource {
   summary: string
 }
 
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: string
+  reasoningSteps?: ReasoningStep[]
+  knowledgeSources?: KnowledgeSource[]
+  solution?: string
+}
+
 interface AIReasoningDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -35,11 +48,10 @@ interface AIReasoningDialogProps {
 }
 
 export function AIReasoningDialog({ open, onOpenChange, query, internalCases, onCaseClick }: AIReasoningDialogProps) {
-  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>([])
-  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
-  const [solution, setSolution] = useState("")
+  const [messages, setMessages] = useState<Message[]>([])
+  const [currentInput, setCurrentInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
-  const [currentStep, setCurrentStep] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // 模拟外部知识库（华为昇腾社区）
   const externalKnowledge: KnowledgeSource[] = [
@@ -62,19 +74,33 @@ export function AIReasoningDialog({ open, onOpenChange, query, internalCases, on
   ]
 
   useEffect(() => {
-    if (open && query) {
-      startReasoning()
-    } else {
+    if (open && query && messages.length === 0) {
+      processQuery(query)
+    } else if (!open) {
       // 重置状态
-      setReasoningSteps([])
-      setKnowledgeSources([])
-      setSolution("")
-      setCurrentStep(0)
+      setMessages([])
+      setCurrentInput("")
     }
   }, [open, query])
 
-  const startReasoning = async () => {
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
+
+  const processQuery = async (userQuery: string) => {
+    if (!userQuery.trim() || isProcessing) return
+
     setIsProcessing(true)
+
+    const userMessage: Message = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: userQuery,
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    setMessages((prev) => [...prev, userMessage])
 
     // 步骤1: 需求分析
     const steps: ReasoningStep[] = [
@@ -103,29 +129,39 @@ export function AIReasoningDialog({ open, onOpenChange, query, internalCases, on
         content: "",
       },
     ]
-    setReasoningSteps(steps)
+
+    const assistantMessageId = `msg-${Date.now() + 1}`
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "正在处理您的需求...",
+      timestamp: new Date().toLocaleTimeString(),
+      reasoningSteps: steps,
+      knowledgeSources: [],
+    }
+    setMessages((prev) => [...prev, assistantMessage])
 
     // 步骤1: 需求分析
     await new Promise((resolve) => setTimeout(resolve, 1500))
-    const analysisContent = `从用户需求"${query}"中识别到：
+    const analysisContent = `从用户需求"${userQuery}"中识别到：
     
 • 应用场景：智能交通、视觉识别
 • 关键需求：车牌识别、路口监控
 • 技术要点：边缘计算、实时处理
 • 预计规模：中等部署规模`
 
-    setReasoningSteps((prev) =>
-      prev.map((s, i) =>
-        i === 0
-          ? { ...s, status: "completed", content: analysisContent, timestamp: new Date().toLocaleTimeString() }
-          : s,
-      ),
-    )
-    setCurrentStep(1)
+    steps[0] = {
+      ...steps[0],
+      status: "completed",
+      content: analysisContent,
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps] })
 
     // 步骤2: 内部知识库检索
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    setReasoningSteps((prev) => prev.map((s, i) => (i === 1 ? { ...s, status: "processing" } : s)))
+    steps[1] = { ...steps[1], status: "processing" }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps] })
 
     // 匹配内部案例
     const matchedInternal = internalCases
@@ -144,44 +180,43 @@ export function AIReasoningDialog({ open, onOpenChange, query, internalCases, on
       }))
 
     await new Promise((resolve) => setTimeout(resolve, 1200))
-    setKnowledgeSources(matchedInternal)
 
     const internalContent = `在内部知识库中找到 ${matchedInternal.length} 个高度相关的成功案例：
 
 ${matchedInternal.map((k, i) => `${i + 1}. ${k.title} (相似度: ${k.relevance}%)`).join("\n")}`
 
-    setReasoningSteps((prev) =>
-      prev.map((s, i) =>
-        i === 1
-          ? { ...s, status: "completed", content: internalContent, timestamp: new Date().toLocaleTimeString() }
-          : s,
-      ),
-    )
-    setCurrentStep(2)
+    steps[1] = {
+      ...steps[1],
+      status: "completed",
+      content: internalContent,
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps], knowledgeSources: matchedInternal })
 
     // 步骤3: 外部知识库检索
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    setReasoningSteps((prev) => prev.map((s, i) => (i === 2 ? { ...s, status: "processing" } : s)))
+    steps[2] = { ...steps[2], status: "processing" }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps] })
 
     await new Promise((resolve) => setTimeout(resolve, 1500))
-    setKnowledgeSources((prev) => [...prev, ...externalKnowledge])
+    const allKnowledgeSources = [...matchedInternal, ...externalKnowledge]
 
     const externalContent = `从华为昇腾社区检索到 ${externalKnowledge.length} 篇技术文档：
 
 ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevance}%)`).join("\n")}`
 
-    setReasoningSteps((prev) =>
-      prev.map((s, i) =>
-        i === 2
-          ? { ...s, status: "completed", content: externalContent, timestamp: new Date().toLocaleTimeString() }
-          : s,
-      ),
-    )
-    setCurrentStep(3)
+    steps[2] = {
+      ...steps[2],
+      status: "completed",
+      content: externalContent,
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps], knowledgeSources: allKnowledgeSources })
 
     // 步骤4: 方案生成
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    setReasoningSteps((prev) => prev.map((s, i) => (i === 3 ? { ...s, status: "processing" } : s)))
+    steps[3] = { ...steps[3], status: "processing" }
+    updateAssistantMessage(assistantMessageId, { reasoningSteps: [...steps] })
 
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
@@ -223,20 +258,32 @@ ${matchedInternal.map((k) => `- ${k.title}`).join("\n")}
 
 详细技术文档请参考华为昇腾社区相关资料。`
 
-    setSolution(generatedSolution)
-    setReasoningSteps((prev) =>
-      prev.map((s, i) =>
-        i === 3
+    steps[3] = {
+      ...steps[3],
+      status: "completed",
+      content: "方案生成完成，已整合内外部知识",
+      timestamp: new Date().toLocaleTimeString(),
+    }
+    updateAssistantMessage(assistantMessageId, {
+      content: "已为您生成完整解决方案",
+      reasoningSteps: [...steps],
+      solution: generatedSolution,
+    })
+
+    setIsProcessing(false)
+  }
+
+  const updateAssistantMessage = (messageId: string, updates: Partial<Message>) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId
           ? {
-              ...s,
-              status: "completed",
-              content: "方案生成完成，已整合内外部知识",
-              timestamp: new Date().toLocaleTimeString(),
+              ...msg,
+              ...updates,
             }
-          : s,
+          : msg,
       ),
     )
-    setIsProcessing(false)
   }
 
   const handleKnowledgeClick = (source: KnowledgeSource) => {
@@ -247,8 +294,7 @@ ${matchedInternal.map((k) => `- ${k.title}`).join("\n")}
     }
   }
 
-  const handleDownloadSolution = () => {
-    // 创建Word文档内容
+  const handleDownloadSolution = (solution: string) => {
     const blob = new Blob([solution], { type: "text/plain;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -260,11 +306,25 @@ ${matchedInternal.map((k) => `- ${k.title}`).join("\n")}
     URL.revokeObjectURL(url)
   }
 
+  const handleSendMessage = () => {
+    if (currentInput.trim() && !isProcessing) {
+      processQuery(currentInput)
+      setCurrentInput("")
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* 固定头部 */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#0036C3] to-[#001580] flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-white" />
@@ -276,129 +336,184 @@ ${matchedInternal.map((k) => `- ${k.title}`).join("\n")}
           </div>
         </div>
 
-        {/* 滚动内容区 */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {/* 用户需求 */}
-          <Card className="border-[#2E6BE6]/20 bg-[#2E6BE6]/5">
-            <CardContent className="pt-4">
-              <div className="flex items-start gap-3">
-                <Brain className="h-5 w-5 text-[#2E6BE6] mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-[#333333] mb-1">用户需求</p>
-                  <p className="text-sm text-[#8C8C8C]">{query}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 推理步骤 */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
-              <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
-              推理过程
-            </h4>
-
-            {reasoningSteps.map((step, index) => (
-              <Card key={step.id} className="border-[#E5E7EB]">
-                <CardContent className="pt-4">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1">
-                      {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                      {step.status === "processing" && <Loader2 className="h-5 w-5 text-[#2E6BE6] animate-spin" />}
-                      {step.status === "pending" && <div className="h-5 w-5 rounded-full border-2 border-[#E5E7EB]" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-[#333333]">
-                          {index + 1}. {step.title}
-                        </p>
-                        {step.timestamp && <span className="text-xs text-[#8C8C8C]">{step.timestamp}</span>}
-                      </div>
-                      {step.content && (
-                        <pre className="text-sm text-[#8C8C8C] whitespace-pre-wrap font-sans">{step.content}</pre>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* 知识来源 */}
-          {knowledgeSources.length > 0 && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
-                参考知识源
-              </h4>
-
-              <div className="grid grid-cols-1 gap-3">
-                {knowledgeSources.map((source) => (
-                  <Card
-                    key={source.id}
-                    className="border-[#E5E7EB] hover:border-[#2E6BE6] transition-colors cursor-pointer"
-                    onClick={() => handleKnowledgeClick(source)}
-                  >
-                    <CardContent className="pt-4">
-                      <div className="flex items-start gap-3">
-                        {source.type === "internal" ? (
-                          <Database className="h-5 w-5 text-[#2E6BE6] mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <Globe className="h-5 w-5 text-[#FF4D4F] mt-0.5 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-medium text-[#333333] truncate">{source.title}</p>
-                            <Badge variant="outline" className="text-xs flex-shrink-0">
-                              {source.relevance}% 相关
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-[#8C8C8C] mb-2">{source.summary}</p>
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="secondary"
-                              className={
-                                source.type === "internal" ? "bg-blue-50 text-blue-700" : "bg-red-50 text-red-700"
-                              }
-                            >
-                              {source.type === "internal" ? "内部案例" : "社区文档"}
-                            </Badge>
-                            <ExternalLink className="h-3 w-3 text-[#8C8C8C]" />
-                          </div>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {messages.map((message) => (
+            <div key={message.id} className="space-y-4">
+              {message.role === "user" ? (
+                // 用户消息
+                <Card className="border-[#2E6BE6]/20 bg-[#2E6BE6]/5 ml-auto max-w-[80%]">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-[#333333]">用户</p>
+                          <span className="text-xs text-[#8C8C8C]">{message.timestamp}</span>
                         </div>
+                        <p className="text-sm text-[#333333]">{message.content}</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 生成的方案 */}
-          {solution && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
-                  <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
-                  AI 生成方案
-                </h4>
-                <Button size="sm" onClick={handleDownloadSolution} className="bg-[#2E6BE6] hover:bg-[#001580]">
-                  <Download className="h-4 w-4 mr-2" />
-                  下载方案
-                </Button>
-              </div>
-
-              <Card className="border-[#2E6BE6]/20 bg-gradient-to-br from-blue-50/50 to-white">
-                <CardContent className="pt-4">
-                  <div className="prose prose-sm max-w-none">
-                    <pre className="text-sm text-[#333333] whitespace-pre-wrap font-sans leading-relaxed">
-                      {solution}
-                    </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                // AI助手消息
+                <div className="space-y-4 max-w-full">
+                  <div className="flex items-center gap-2 text-sm font-medium text-[#333333]">
+                    <Brain className="h-4 w-4 text-[#2E6BE6]" />
+                    AI 助手
+                    <span className="text-xs text-[#8C8C8C] font-normal">{message.timestamp}</span>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* 推理步骤 */}
+                  {message.reasoningSteps && message.reasoningSteps.length > 0 && (
+                    <div className="space-y-3">
+                      {message.reasoningSteps.map((step, index) => (
+                        <Card key={step.id} className="border-[#E5E7EB]">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1">
+                                {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                                {step.status === "processing" && (
+                                  <Loader2 className="h-5 w-5 text-[#2E6BE6] animate-spin" />
+                                )}
+                                {step.status === "pending" && (
+                                  <div className="h-5 w-5 rounded-full border-2 border-[#E5E7EB]" />
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-sm font-medium text-[#333333]">
+                                    {index + 1}. {step.title}
+                                  </p>
+                                  {step.timestamp && <span className="text-xs text-[#8C8C8C]">{step.timestamp}</span>}
+                                </div>
+                                {step.content && (
+                                  <pre className="text-sm text-[#8C8C8C] whitespace-pre-wrap font-sans">
+                                    {step.content}
+                                  </pre>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 知识来源 */}
+                  {message.knowledgeSources && message.knowledgeSources.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
+                        <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
+                        参考知识源
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {message.knowledgeSources.map((source) => (
+                          <Card
+                            key={source.id}
+                            className="border-[#E5E7EB] hover:border-[#2E6BE6] transition-colors cursor-pointer"
+                            onClick={() => handleKnowledgeClick(source)}
+                          >
+                            <CardContent className="pt-4">
+                              <div className="flex items-start gap-3">
+                                {source.type === "internal" ? (
+                                  <Database className="h-5 w-5 text-[#2E6BE6] mt-0.5 flex-shrink-0" />
+                                ) : (
+                                  <Globe className="h-5 w-5 text-[#FF4D4F] mt-0.5 flex-shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-sm font-medium text-[#333333] truncate">{source.title}</p>
+                                    <Badge variant="outline" className="text-xs flex-shrink-0">
+                                      {source.relevance}%
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-[#8C8C8C] mb-2 line-clamp-2">{source.summary}</p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      variant="secondary"
+                                      className={
+                                        source.type === "internal"
+                                          ? "bg-blue-50 text-blue-700"
+                                          : "bg-red-50 text-red-700"
+                                      }
+                                    >
+                                      {source.type === "internal" ? "内部案例" : "社区文档"}
+                                    </Badge>
+                                    <ExternalLink className="h-3 w-3 text-[#8C8C8C]" />
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 生成的方案 */}
+                  {message.solution && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
+                          <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
+                          AI 生成方案
+                        </h4>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDownloadSolution(message.solution!)}
+                          className="bg-[#2E6BE6] hover:bg-[#001580]"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          下载方案
+                        </Button>
+                      </div>
+
+                      <Card className="border-[#2E6BE6]/20 bg-gradient-to-br from-blue-50/50 to-white">
+                        <CardContent className="pt-4">
+                          <div className="prose prose-sm max-w-none">
+                            <pre className="text-sm text-[#333333] whitespace-pre-wrap font-sans leading-relaxed">
+                              {message.solution}
+                            </pre>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* 加载指示器 */}
+          {isProcessing && messages[messages.length - 1]?.role === "user" && (
+            <div className="flex items-center gap-2 text-sm text-[#8C8C8C]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              AI 正在思考中...
             </div>
           )}
+        </div>
+
+        <div className="border-t bg-white px-6 py-4">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <Input
+                placeholder="继续对话，询问更多细节或提出新需求..."
+                value={currentInput}
+                onChange={(e) => setCurrentInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isProcessing}
+                className="resize-none"
+              />
+            </div>
+            <Button
+              onClick={handleSendMessage}
+              disabled={!currentInput.trim() || isProcessing}
+              className="bg-[#2E6BE6] hover:bg-[#001580]"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-[#8C8C8C] mt-2">按 Enter 发送，Shift + Enter 换行</p>
         </div>
       </DialogContent>
     </Dialog>
