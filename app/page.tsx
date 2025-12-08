@@ -24,6 +24,7 @@ import {
   Target,
   Building,
   ChevronRight,
+  History,
 } from "lucide-react"
 import { mockCases, mockRequirements } from "@/lib/mock-data"
 import { matchSimilarCases, generateProposal } from "@/lib/mock-ai"
@@ -34,6 +35,7 @@ import { CaseUpload } from "@/components/case-upload"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AIReasoningDialog } from "@/components/ai-reasoning-dialog"
+import { HistoryDrawer } from "@/components/history-drawer" // Import HistoryDrawer
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"requirements" | "cases" | "matching">("requirements")
@@ -72,6 +74,19 @@ export default function Home() {
 
   const [showAIReasoning, setShowAIReasoning] = useState(false)
   const [aiQuery, setAIQuery] = useState("")
+
+  // Add history state and drawer
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false)
+  const [semanticHistory, setSemanticHistory] = useState<
+    Array<{
+      id: string
+      title: string
+      query: string
+      timestamp: Date
+      messageCount: number
+      messages: any[]
+    }>
+  >([])
 
   const handleSubmitRequirement = async (requirement: Requirement) => {
     setRequirements((prev) => [requirement, ...prev])
@@ -458,6 +473,32 @@ export default function Home() {
     }
   }
 
+  const handleSaveSemanticHistory = (query: string, messages: any[]) => {
+    const newHistory = {
+      id: Date.now().toString(),
+      title: query.substring(0, 50) + (query.length > 50 ? "..." : ""),
+      query,
+      timestamp: new Date(),
+      messageCount: messages.length,
+      messages,
+    }
+    setSemanticHistory((prev) => [newHistory, ...prev])
+  }
+
+  const handleSelectHistory = (item: any) => {
+    setAIQuery(item.query)
+    setShowAIReasoning(true)
+    setShowHistoryDrawer(false)
+  }
+
+  const handleRenameHistory = (id: string, newTitle: string) => {
+    setSemanticHistory((prev) => prev.map((item) => (item.id === id ? { ...item, title: newTitle } : item)))
+  }
+
+  const handleDeleteHistory = (id: string) => {
+    setSemanticHistory((prev) => prev.filter((item) => item.id !== id))
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-[#0036C3] to-[#001580] text-white shadow-lg">
@@ -604,7 +645,7 @@ export default function Home() {
 
           {/* 案例库Tab */}
           {activeTab === "cases" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="sticky top-[64px] z-10 bg-[#F5F7FA] pb-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 flex items-center gap-4">
@@ -657,10 +698,20 @@ export default function Home() {
                       {/* CHANGE: Remove semantic search button, enter key directly opens dialog */}
                     </div>
                   </div>
-                  <Button onClick={() => setShowNewCase(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    新增案例
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button onClick={() => setShowNewCase(true)} className="bg-[#2E6BE6] hover:bg-[#0036C3] shadow-md">
+                      <Plus className="h-4 w-4 mr-2" />
+                      新增案例
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowHistoryDrawer(true)}
+                      className="border-[#2E6BE6] text-[#2E6BE6] hover:bg-blue-50"
+                    >
+                      <History className="h-4 w-4 mr-2" />
+                      历史记录
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1352,7 +1403,20 @@ export default function Home() {
         onOpenChange={setShowAIReasoning}
         query={aiQuery}
         internalCases={cases}
-        onCaseClick={handleCaseClickFromAI}
+        onCaseClick={(caseId) => {
+          const caseData = cases.find((c) => c.id === caseId)
+          if (caseData) setSelectedCase(caseData)
+        }}
+        onSaveHistory={handleSaveSemanticHistory}
+      />
+
+      <HistoryDrawer
+        open={showHistoryDrawer}
+        onOpenChange={setShowHistoryDrawer}
+        history={semanticHistory}
+        onSelect={handleSelectHistory}
+        onRename={handleRenameHistory}
+        onDelete={handleDeleteHistory}
       />
 
       {/* 匹配加载状态 */}
