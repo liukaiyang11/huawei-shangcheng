@@ -625,7 +625,6 @@ export default function Home() {
                           onChange={(e) => setCaseSearch(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && caseSearchType === "semantic") {
-                              e.preventDefault()
                               handleSemanticSearch()
                             }
                           }}
