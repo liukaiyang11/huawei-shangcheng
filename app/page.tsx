@@ -33,6 +33,7 @@ import { VideoViewer } from "@/components/video-viewer"
 import { CaseUpload } from "@/components/case-upload"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AIReasoningDialog } from "@/components/ai-reasoning-dialog"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"requirements" | "cases" | "matching">("requirements")
@@ -68,6 +69,9 @@ export default function Home() {
   const [generatedProposal, setGeneratedProposal] = useState<string>("") // Declare setGeneratedProposal
 
   const [viewerMode, setViewerMode] = useState<{ type: "ppt" | "video"; url: string; title: string } | null>(null)
+
+  const [showAIReasoning, setShowAIReasoning] = useState(false)
+  const [aiQuery, setAIQuery] = useState("")
 
   const handleSubmitRequirement = async (requirement: Requirement) => {
     setRequirements((prev) => [requirement, ...prev])
@@ -439,6 +443,21 @@ export default function Home() {
     }
   })
 
+  const handleSemanticSearch = () => {
+    if (caseSearchType === "semantic" && caseSearch.trim()) {
+      setAIQuery(caseSearch)
+      setShowAIReasoning(true)
+    }
+  }
+
+  const handleCaseClickFromAI = (caseId: string) => {
+    const selectedCase = cases.find((c) => c.id === caseId)
+    if (selectedCase) {
+      setSelectedCase(selectedCase)
+      setShowAIReasoning(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-[#0036C3] to-[#001580] text-white shadow-lg">
@@ -585,50 +604,73 @@ export default function Home() {
 
           {/* 案例库Tab */}
           {activeTab === "cases" && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 flex items-center gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">落地案例库</h2>
-                  <p className="text-sm text-muted-foreground">成功案例与最佳实践</p>
-                </div>
-                <div className="flex-1 max-w-xl flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="搜索案例：行业、场景、硬件型号..."
-                      value={caseSearch}
-                      onChange={(e) => setCaseSearch(e.target.value)}
-                      className="pl-9 h-9"
-                    />
+            <div className="space-y-6">
+              <div className="sticky top-[64px] z-10 bg-[#F5F7FA] pb-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 flex items-center gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold">落地案例库</h2>
+                      <p className="text-sm text-muted-foreground">成功案例与最佳实践</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-1 max-w-2xl">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={
+                            caseSearchType === "semantic"
+                              ? "输入需求，我们将基于需求分析与历史解决方案参考，为你定制专属解决方案"
+                              : "搜索案例：行业、场景、硬件型号..."
+                          }
+                          value={caseSearch}
+                          onChange={(e) => setCaseSearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && caseSearchType === "semantic") {
+                              handleSemanticSearch()
+                            }
+                          }}
+                          className="pl-9 h-9"
+                        />
+                      </div>
+                      <Select
+                        value={caseSearchType}
+                        onValueChange={(value: "keyword" | "semantic") => setCaseSearchType(value)}
+                      >
+                        <SelectTrigger className="w-[120px] h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="keyword">
+                            <div className="flex items-center">
+                              <Filter className="h-4 w-4 mr-2" />
+                              关键词
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="semantic">
+                            <div className="flex items-center">
+                              <Brain className="h-4 w-4 mr-2" />
+                              语义
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {caseSearchType === "semantic" && caseSearch.trim() && (
+                        <Button
+                          size="sm"
+                          onClick={handleSemanticSearch}
+                          className="bg-[#2E6BE6] hover:bg-[#001580] h-9"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          生成方案
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Select
-                    value={caseSearchType}
-                    onValueChange={(value: "keyword" | "semantic") => setCaseSearchType(value)}
-                  >
-                    <SelectTrigger className="w-[120px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="keyword">
-                        <div className="flex items-center">
-                          <Filter className="h-4 w-4 mr-2" />
-                          关键词
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="semantic">
-                        <div className="flex items-center">
-                          <Brain className="h-4 w-4 mr-2" />
-                          语义
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Button onClick={() => setShowNewCase(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    新增案例
+                  </Button>
                 </div>
               </div>
-              <Button onClick={() => setShowNewCase(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                新增案例
-              </Button>
             </div>
           )}
 
@@ -1312,6 +1354,14 @@ export default function Home() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AIReasoningDialog
+        open={showAIReasoning}
+        onOpenChange={setShowAIReasoning}
+        query={aiQuery}
+        internalCases={cases}
+        onCaseClick={handleCaseClickFromAI}
+      />
 
       {/* 匹配加载状态 */}
       {/* This section seems redundant with isAnalyzing and isGeneratingProposal states */}
