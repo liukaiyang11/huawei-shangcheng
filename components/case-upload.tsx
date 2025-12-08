@@ -226,11 +226,6 @@ export function CaseUpload({ mode = "create", initialData, onSubmit, onSave, onC
     <div className="space-y-6">
       {mode === "create" && inputStage === "input" && (
         <div className="space-y-4">
-          <div>
-            <h4 className="font-semibold text-[#333333] mb-1">案例录入</h4>
-            <p className="text-sm text-[#8C8C8C]">通过语音、文本或上传文件快速记录案例信息</p>
-          </div>
-
           <div className="relative">
             <Textarea
               value={rawInput}
