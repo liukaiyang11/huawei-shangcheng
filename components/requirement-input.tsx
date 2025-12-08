@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Mic, Loader2, Send, FileText, Edit2, ImageIcon, Save, X } from "lucide-react"
+import { Mic, Loader2, Send, FileText, Edit2, Paperclip, X, Save } from "lucide-react"
 import { extractStructuredData } from "@/lib/mock-ai"
 import type { Requirement } from "@/types"
 
@@ -29,7 +29,7 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
   )
   const [isRecording, setIsRecording] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; url: string }[]>([])
   const [parsingProgress, setParsingProgress] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -63,36 +63,44 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
     setParsingProgress("")
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     setIsUploading(true)
-    setParsingProgress("正在上传图片...")
+    setParsingProgress("正在上传文件...")
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    const imageUrl = URL.createObjectURL(file)
-    setUploadedImage(imageUrl)
+    const newFiles = Array.from(files).map((file) => ({
+      name: file.name,
+      url: URL.createObjectURL(file),
+    }))
+
+    setUploadedFiles((prev) => [...prev, ...newFiles])
     setInputType("image")
 
-    setParsingProgress("OCR识别中...")
+    setParsingProgress("AI解析文件内容...")
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     setParsingProgress("提取关键信息...")
 
     const extractedText = "客户需求：智慧医疗影像识别系统\n预算：150万\n场景：CT/MRI图像分析\n硬件偏好：昇腾910B"
 
-    let currentText = ""
-    for (let i = 0; i < extractedText.length; i += 8) {
-      currentText = extractedText.substring(0, i + 8)
-      setRawInput(currentText)
+    const currentText = rawInput ? rawInput + "\n\n" + extractedText : extractedText
+    const startIndex = rawInput.length > 0 ? rawInput.length + 2 : 0
+
+    for (let i = 0; i <= extractedText.length; i += 8) {
+      setRawInput(rawInput ? rawInput + "\n\n" + extractedText.substring(0, i) : extractedText.substring(0, i))
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
-    setRawInput(extractedText)
     setIsUploading(false)
     setParsingProgress("")
+  }
+
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleAIProcess = async () => {
@@ -134,7 +142,7 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
       rawInput: {
         type: inputType,
         content: rawInput,
-        attachments: uploadedImage ? [uploadedImage] : undefined,
+        attachments: uploadedFiles.map((file) => file.url),
       },
       structured: structuredData,
     }
@@ -143,7 +151,7 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
 
     setRawInput("")
     setStructuredData(null)
-    setUploadedImage(null)
+    setUploadedFiles([])
     setParsingProgress("")
   }
 
@@ -176,52 +184,80 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
         <Card className="floating-card border-border/50">
           <CardHeader>
             <CardTitle className="text-[#333333]">需求录入</CardTitle>
-            <CardDescription className="text-[#8C8C8C]">通过语音、文本或图片快速记录客户需求</CardDescription>
+            <CardDescription className="text-[#8C8C8C]">通过语音、文本或上传文件快速记录客户需求</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button
-                variant={isRecording ? "default" : "outline"}
-                className={`flex-1 ${isRecording ? "bg-[#2E6BE6] hover:bg-[#0036C3]" : "border-[#2E6BE6]/30 text-[#2E6BE6] hover:bg-[#2E6BE6]/10 hover:border-[#2E6BE6]"}`}
-                onClick={handleVoiceInput}
-                disabled={isProcessing || isUploading}
-              >
-                {isRecording ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    录音中...
-                  </>
-                ) : (
-                  <>
-                    <Mic className="mr-2 h-4 w-4" />
-                    语音输入
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 border-[#2E6BE6]/30 text-[#2E6BE6] hover:bg-[#2E6BE6]/10 hover:border-[#2E6BE6] bg-transparent"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing || isUploading}
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    上传中...
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="mr-2 h-4 w-4" />
-                    上传图片
-                  </>
-                )}
-              </Button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <div className="relative">
+              <Textarea
+                placeholder="请输入客户需求、粘贴微信聊天记录...&#10;&#10;例如：客户是做智慧交通的，想在路口部署边缘计算，大概50个路口，需要识别车牌和行人，预算大概200万，想用昇腾的卡。"
+                value={rawInput}
+                onChange={(e) => setRawInput(e.target.value)}
+                className="min-h-[160px] resize-none border-[#E8EAED] focus-visible:ring-[#2E6BE6] text-[#333333] placeholder:text-[#8C8C8C] pr-24 bg-[#2A2A2A] text-white placeholder:text-gray-400 border-gray-600"
+                disabled={isProcessing || isUploading || isRecording}
+              />
+
+              <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full text-gray-300 hover:text-white hover:bg-gray-700"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isProcessing || isUploading || isRecording}
+                  title="上传文件"
+                >
+                  {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-9 w-9 rounded-full ${
+                    isRecording
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : "text-gray-300 hover:text-white hover:bg-gray-700"
+                  }`}
+                  onClick={handleVoiceInput}
+                  disabled={isProcessing || isUploading}
+                  title="语音输入"
+                >
+                  {isRecording ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
+                </Button>
+
+                <Button
+                  size="icon"
+                  className="h-10 w-10 rounded-full bg-[#2E6BE6] hover:bg-[#0036C3] text-white shadow-lg"
+                  onClick={handleAIProcess}
+                  disabled={!rawInput.trim() || isProcessing || isUploading || isRecording || !!parsingProgress}
+                  title="AI智能分析"
+                >
+                  {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                </Button>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
             </div>
 
-            {uploadedImage && (
-              <div className="relative rounded-lg overflow-hidden border border-[#E8EAED]">
-                <img src={uploadedImage || "/placeholder.svg"} alt="上传的图片" className="w-full h-48 object-cover" />
+            {uploadedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[#2E6BE6]/10 border border-[#2E6BE6]/30 rounded-full text-sm text-[#2E6BE6]"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <button onClick={() => removeFile(index)} className="hover:bg-[#2E6BE6]/20 rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -231,34 +267,6 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
                 <span>{parsingProgress}</span>
               </div>
             )}
-
-            <div>
-              <Textarea
-                placeholder="粘贴客户需求、微信聊天记录或手动输入...&#10;&#10;例如：客户是做智慧交通的，想在路口部署边缘计算，大概50个路口，需要识别车牌和行人，预算大概200万，想用昇腾的卡。"
-                value={rawInput}
-                onChange={(e) => setRawInput(e.target.value)}
-                className="min-h-[120px] resize-none border-[#E8EAED] focus-visible:ring-[#2E6BE6] text-[#333333] placeholder:text-[#8C8C8C]"
-                disabled={isProcessing || isUploading}
-              />
-            </div>
-
-            <Button
-              className="w-full bg-[#2E6BE6] hover:bg-[#0036C3] text-white"
-              onClick={handleAIProcess}
-              disabled={!rawInput.trim() || isProcessing || isUploading || !!parsingProgress}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  AI分析中...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  AI智能分析
-                </>
-              )}
-            </Button>
           </CardContent>
         </Card>
       )}
