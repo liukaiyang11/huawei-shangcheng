@@ -42,11 +42,11 @@ export function CaseCard({ case: caseData, onViewDetails, onViewPPT, onViewVideo
       </CardHeader>
 
       <CardContent className="space-y-4 flex-1 flex flex-col">
-        {/* 软件场景 */}
+        {/* 客户痛点 */}
         <div className="space-y-2 pb-2 border-b border-border/50">
           <h4 className="text-xs font-semibold text-[#8C8C8C] flex items-center gap-1">
             <Layers className="h-3 w-3 text-[#2E6BE6]" />
-            软件场景
+            客户痛点
           </h4>
           <p className="text-sm text-[#333333] leading-relaxed line-clamp-4">{caseData.softwareScenario}</p>
         </div>
