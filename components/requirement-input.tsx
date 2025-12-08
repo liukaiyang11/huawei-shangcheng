@@ -18,9 +18,17 @@ interface RequirementInputProps {
   onSubmit?: (requirement: Requirement) => void
   onSave?: (data: Partial<Requirement["structured"]>) => void
   onCancel?: () => void
+  stage?: "input" | "review"
 }
 
-export function RequirementInput({ mode = "create", initialData, onSubmit, onSave, onCancel }: RequirementInputProps) {
+export function RequirementInput({
+  mode = "create",
+  initialData,
+  onSubmit,
+  onSave,
+  onCancel,
+  stage = "input",
+}: RequirementInputProps) {
   const [inputType, setInputType] = useState<"text" | "voice" | "image">("text")
   const [rawInput, setRawInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -180,13 +188,26 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
 
   return (
     <div className="space-y-6">
-      {mode === "create" && (
-        <Card className="floating-card border-border/50">
-          <CardHeader>
-            <CardTitle className="text-[#333333]">需求录入</CardTitle>
-            <CardDescription className="text-[#8C8C8C]">通过语音、文本或上传文件快速记录客户需求</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {stage === "input" && (
+        <Card className="floating-card border-[#E8EAED]">
+          <CardContent className="space-y-4 pt-6">
+            {uploadedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[#2E6BE6]/10 border border-[#2E6BE6]/30 rounded-full text-sm text-[#2E6BE6]"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <button onClick={() => removeFile(index)} className="hover:bg-[#2E6BE6]/20 rounded-full p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="relative">
               <Textarea
                 placeholder="请输入客户需求、粘贴微信聊天记录...&#10;&#10;例如：客户是做智慧交通的，想在路口部署边缘计算，大概50个路口，需要识别车牌和行人，预算大概200万，想用昇腾的卡。"
@@ -243,23 +264,6 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
                 onChange={handleFileUpload}
               />
             </div>
-
-            {uploadedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {uploadedFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-[#2E6BE6]/10 border border-[#2E6BE6]/30 rounded-full text-sm text-[#2E6BE6]"
-                  >
-                    <Paperclip className="h-3 w-3" />
-                    <span className="max-w-[150px] truncate">{file.name}</span>
-                    <button onClick={() => removeFile(index)} className="hover:bg-[#2E6BE6]/20 rounded-full p-0.5">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
 
             {parsingProgress && (
               <div className="flex items-center gap-2 text-sm text-[#2E6BE6] bg-[#2E6BE6]/5 px-3 py-2 rounded-lg">
