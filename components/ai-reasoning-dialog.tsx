@@ -8,7 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Brain, ExternalLink, Database, Globe, CheckCircle2, Loader2, Download, Sparkles, Send } from "lucide-react"
+import {
+  Brain,
+  ExternalLink,
+  Database,
+  Globe,
+  CheckCircle2,
+  Loader2,
+  Download,
+  Sparkles,
+  Send,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react"
 import type { Case } from "@/types"
 
 interface ReasoningStep {
@@ -51,6 +63,7 @@ export function AIReasoningDialog({ open, onOpenChange, query, internalCases, on
   const [messages, setMessages] = useState<Message[]>([])
   const [currentInput, setCurrentInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [collapsedSteps, setCollapsedSteps] = useState<Set<string>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // 模拟外部知识库（华为昇腾社区）
@@ -319,9 +332,21 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
     }
   }
 
+  const toggleStepCollapse = (stepId: string) => {
+    setCollapsedSteps((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(stepId)) {
+        newSet.delete(stepId)
+      } else {
+        newSet.add(stepId)
+      }
+      return newSet
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* 固定头部 */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
@@ -364,37 +389,70 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
 
                   {/* 推理步骤 */}
                   {message.reasoningSteps && message.reasoningSteps.length > 0 && (
-                    <div className="space-y-3">
-                      {message.reasoningSteps.map((step, index) => (
-                        <Card key={step.id} className="border-[#E5E7EB]">
-                          <CardContent className="pt-4">
-                            <div className="flex items-start gap-3">
-                              <div className="mt-1">
-                                {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                                {step.status === "processing" && (
-                                  <Loader2 className="h-5 w-5 text-[#2E6BE6] animate-spin" />
-                                )}
-                                {step.status === "pending" && (
-                                  <div className="h-5 w-5 rounded-full border-2 border-[#E5E7EB]" />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="text-sm font-medium text-[#333333]">
-                                    {index + 1}. {step.title}
-                                  </p>
+                    <div className="relative pl-8">
+                      {/* Vertical timeline line */}
+                      <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-gradient-to-b from-[#2E6BE6] via-[#2E6BE6]/50 to-transparent" />
+
+                      {message.reasoningSteps.map((step, index) => {
+                        const isCollapsed = collapsedSteps.has(step.id)
+                        const isLast = index === message.reasoningSteps!.length - 1
+
+                        return (
+                          <div key={step.id} className="relative mb-4">
+                            {/* Timeline node */}
+                            <div className="absolute -left-[22px] top-2">
+                              {step.status === "completed" && (
+                                <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
+                                  <CheckCircle2 className="h-3 w-3 text-white" />
+                                </div>
+                              )}
+                              {step.status === "processing" && (
+                                <div className="h-5 w-5 rounded-full bg-[#2E6BE6] flex items-center justify-center">
+                                  <Loader2 className="h-3 w-3 text-white animate-spin" />
+                                </div>
+                              )}
+                              {step.status === "pending" && (
+                                <div className="h-5 w-5 rounded-full border-2 border-[#E5E7EB] bg-white" />
+                              )}
+                            </div>
+
+                            {/* Step content */}
+                            <div className="ml-2">
+                              <button
+                                onClick={() => toggleStepCollapse(step.id)}
+                                className="w-full text-left hover:bg-gray-50 rounded-lg p-3 transition-colors"
+                                disabled={!step.content}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {step.content && (
+                                      <>
+                                        {isCollapsed ? (
+                                          <ChevronRight className="h-4 w-4 text-[#8C8C8C]" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4 text-[#8C8C8C]" />
+                                        )}
+                                      </>
+                                    )}
+                                    <p className="text-sm font-medium text-[#333333]">
+                                      {index + 1}. {step.title}
+                                    </p>
+                                  </div>
                                   {step.timestamp && <span className="text-xs text-[#8C8C8C]">{step.timestamp}</span>}
                                 </div>
-                                {step.content && (
-                                  <pre className="text-sm text-[#8C8C8C] whitespace-pre-wrap font-sans">
+                              </button>
+
+                              {step.content && !isCollapsed && (
+                                <div className="mt-2 ml-3 pl-4 border-l-2 border-[#E5E7EB]">
+                                  <pre className="text-sm text-[#8C8C8C] whitespace-pre-wrap font-sans leading-relaxed">
                                     {step.content}
                                   </pre>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
 
