@@ -39,7 +39,7 @@ import { HistoryDrawer } from "@/components/history-drawer" // Import HistoryDra
 import { Textarea } from "@/components/ui/textarea" // Import Textarea
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"requirements" | "cases" | "matching">("requirements")
+  const [activeTab, setActiveTab] = useState<"requirements" | "cases">("requirements")
   const [requirements, setRequirements] = useState<Requirement[]>(mockRequirements)
   const [cases, setCases] = useState<Case[]>(mockCases)
   const [showNewRequirement, setShowNewRequirement] = useState(false)
@@ -546,17 +546,6 @@ export default function Home() {
                   {cases.length}
                 </Badge>
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setActiveTab("matching")}
-                className={
-                  activeTab === "matching"
-                    ? "bg-[#001580] text-white hover:bg-[#001580]/90"
-                    : "text-white hover:bg-white/10"
-                }
-              >
-                数据看板
-              </Button>
             </div>
           </div>
         </div>
@@ -725,14 +714,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          {/* 智能匹配Tab */}
-          {activeTab === "matching" && (
-            <div>
-              <h2 className="text-lg font-semibold">AI智能匹配引擎</h2>
-              <p className="text-sm text-muted-foreground">基于语义分析自动匹配相似案例</p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -812,74 +793,6 @@ export default function Home() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* 智能匹配Tab */}
-        {activeTab === "matching" && (
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center space-y-2">
-                        <div className="text-3xl font-bold text-primary">{requirements.length}</div>
-                        <div className="text-sm text-muted-foreground">总需求数</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center space-y-2">
-                        <div className="text-3xl font-bold text-green-600">
-                          {requirements.filter((r) => r.matchedCases && r.matchedCases.length > 0).length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">已匹配</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center space-y-2">
-                        <div className="text-3xl font-bold text-blue-600">{cases.length}</div>
-                        <div className="text-sm text-muted-foreground">案例库总数</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="border rounded-lg p-4 space-y-3">
-                  <h4 className="font-semibold text-sm">匹配算法说明</h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
-                      <span>
-                        <strong>行业匹配：</strong>优先匹配相同行业的成功案例
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
-                      <span>
-                        <strong>场景匹配：</strong>基于应用场景标签进行语义相似度计算
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
-                      <span>
-                        <strong>硬件匹配：</strong>匹配相同或兼容的昇腾硬件型号
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
-                      <span>
-                        <strong>自动生成：</strong>基于Top 3案例自动生成初步解决方案
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
       </div>
