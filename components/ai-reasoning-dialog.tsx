@@ -223,42 +223,44 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
     const generatedSolution = `# 智能交通路口监控解决方案
 
 ## 一、方案概述
-基于华为昇腾AI处理器的智能交通路口监控系统[1]，实现车牌自动识别、交通流量统计和异常行为检测。该方案已在多个城市成功部署[2]，具有成熟的实施经验。
+基于华为昇腾AI处理器的智能交通路口监控系统，实现车牌自动识别、交通流量统计和异常行为检测[1][4]。
 
 ## 二、技术架构
 **硬件配置：**
-- 边缘侧：昇腾310推理卡 × 每路口1张[4]
+- 边缘侧：昇腾310推理卡 × 每路口1张[2][5]
 - 云端：Atlas 800训练服务器（可选，用于模型优化）[5]
 
 **软件栈：**
-- 推理框架：MindSpore Lite[4]
-- 算法模型：YOLO v5 车牌检测 + CRNN 字符识别[1][2]
-- 部署方式：边缘计算，本地实时处理[4]
+- 推理框架：MindSpore Lite[1][3]
+- 算法模型：YOLO v5 车牌检测 + CRNN 字符识别[1][4]
+- 部署方式：边缘计算，本地实时处理
 
 ## 三、核心功能
-1. **车牌识别**：准确率 ≥ 98%[1][2]，支持各类车牌类型
-2. **实时处理**：单路视频延迟 < 100ms[4]
+1. **车牌识别**：准确率 ≥ 98%，支持各类车牌类型[1][4]
+2. **实时处理**：单路视频延迟 < 100ms[2]
 3. **数据上报**：违章信息自动上传云平台[3]
 
 ## 四、预期效果
-基于已有成功案例的数据[1][2][3]：
-- 识别准确率：98%+
-- 处理速度：30fps/路
-- 成本降低：相比人工巡查降低 80%
+- 识别准确率：98%+[1]
+- 处理速度：30fps/路[2]
+- 成本降低：相比人工巡查降低 80%[3]
 - 部署周期：2-3个月
 
 ## 五、推荐配置
-**50个路口标准配置：**
-- 昇腾310推理卡：50张[4]
+**50个路口标准配置：**[1]
+- 昇腾310推理卡：50张
 - 边缘服务器：50台
-- 预估投资：180-220万元[5]
+- 预估投资：180-220万元
 
-本方案综合参考了华为昇腾社区的技术白皮书[4][5]和多个成功落地案例的实施经验[1][2][3]。`
+详细技术文档请参考华为昇腾社区相关资料[4][5]。
+
+---
+*本方案基于${allKnowledgeSources.length}个内外部知识源生成，引用标注[数字]对应下方参考知识源列表。*`
 
     steps[3] = {
       ...steps[3],
       status: "completed",
-      content: "方案生成完成，已整合内外部知识并添加引用标注",
+      content: "方案生成完成，已整合内外部知识并标注引用来源",
       timestamp: new Date().toLocaleTimeString(),
     }
     updateAssistantMessage(assistantMessageId, {
@@ -396,6 +398,7 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
                     </div>
                   )}
 
+                  {/* 生成的方案 */}
                   {message.solution && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -425,13 +428,14 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
                     </div>
                   )}
 
+                  {/* 知识来源 */}
                   {message.knowledgeSources && message.knowledgeSources.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold text-[#333333] flex items-center gap-2">
                         <div className="h-1 w-1 rounded-full bg-[#2E6BE6]" />
                         参考知识源
                       </h4>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-3">
                         {message.knowledgeSources.map((source, index) => (
                           <Card
                             key={source.id}
@@ -440,7 +444,7 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
                           >
                             <CardContent className="pt-4">
                               <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 h-6 w-6 rounded-full bg-[#2E6BE6] text-white flex items-center justify-center text-xs font-semibold">
+                                <div className="flex-shrink-0 h-6 w-6 rounded-full bg-[#2E6BE6] text-white text-xs font-semibold flex items-center justify-center">
                                   {index + 1}
                                 </div>
                                 {source.type === "internal" ? (
@@ -450,12 +454,12 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-medium text-[#333333]">{source.title}</p>
+                                    <p className="text-sm font-medium text-[#333333] truncate">{source.title}</p>
                                     <Badge variant="outline" className="text-xs flex-shrink-0">
                                       {source.relevance}%
                                     </Badge>
                                   </div>
-                                  <p className="text-xs text-[#8C8C8C] mb-2">{source.summary}</p>
+                                  <p className="text-xs text-[#8C8C8C] mb-2 line-clamp-2">{source.summary}</p>
                                   <div className="flex items-center gap-2">
                                     <Badge
                                       variant="secondary"
@@ -491,7 +495,6 @@ ${externalKnowledge.map((k, i) => `${i + 1}. ${k.title} (相关度: ${k.relevanc
           )}
         </div>
 
-        {/* 底部输入框 */}
         <div className="border-t bg-white px-6 py-4">
           <div className="flex items-end gap-3">
             <div className="flex-1">
