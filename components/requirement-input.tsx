@@ -192,7 +192,7 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
                 placeholder="请输入客户需求、粘贴微信聊天记录...&#10;&#10;例如：客户是做智慧交通的，想在路口部署边缘计算，大概50个路口，需要识别车牌和行人，预算大概200万，想用昇腾的卡。"
                 value={rawInput}
                 onChange={(e) => setRawInput(e.target.value)}
-                className="min-h-[160px] resize-none border-[#E8EAED] focus-visible:ring-[#2E6BE6] text-[#333333] placeholder:text-[#8C8C8C] pr-24 bg-[#2A2A2A] text-white placeholder:text-gray-400 border-gray-600"
+                className="min-h-[160px] resize-none border-[#E8EAED] focus-visible:ring-[#2E6BE6] text-[#333333] placeholder:text-[#8C8C8C] pr-24 bg-white"
                 disabled={isProcessing || isUploading || isRecording}
               />
 
@@ -200,7 +200,7 @@ export function RequirementInput({ mode = "create", initialData, onSubmit, onSav
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full text-gray-300 hover:text-white hover:bg-gray-700"
+                  className="h-9 w-9 rounded-full text-[#666666] hover:text-[#2E6BE6] hover:bg-gray-100"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isProcessing || isUploading || isRecording}
                   title="上传文件"
