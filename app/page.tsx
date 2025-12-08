@@ -36,6 +36,7 @@ import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AIReasoningDialog } from "@/components/ai-reasoning-dialog"
 import { HistoryDrawer } from "@/components/history-drawer" // Import HistoryDrawer
+import { Textarea } from "@/components/ui/textarea" // Import Textarea
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"requirements" | "cases" | "matching">("requirements")
@@ -645,74 +646,82 @@ export default function Home() {
 
           {/* 案例库Tab */}
           {activeTab === "cases" && (
-            <div className="space-y-4">
-              <div className="sticky top-[64px] z-10 bg-[#F5F7FA] pb-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 flex items-center gap-4">
-                    <div>
-                      <h2 className="text-lg font-semibold">落地案例库</h2>
-                      <p className="text-sm text-muted-foreground">成功案例与最佳实践</p>
-                    </div>
-                    <div className="flex items-center gap-3 flex-1 max-w-2xl">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder={
-                            caseSearchType === "semantic"
-                              ? "输入需求，我们将基于需求分析与历史解决方案参考，为你定制专属解决方案"
-                              : "搜索案例：行业、场景、硬件型号..."
-                          }
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 flex items-center gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">落地案例库</h2>
+                  <p className="text-sm text-muted-foreground">成功案例与最佳实践</p>
+                </div>
+                <div className="flex items-center gap-3 flex-1 max-w-2xl">
+                  {/* CHANGE: Use textarea for semantic mode, input for keyword mode */}
+                  <div className="relative flex-1">
+                    {caseSearchType === "semantic" ? (
+                      <>
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Textarea
+                          placeholder="输入需求，我们将基于需求分析与历史解决方案参考，为你定制专属解决方案"
                           value={caseSearch}
                           onChange={(e) => setCaseSearch(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" && caseSearchType === "semantic") {
+                            if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault()
                               handleSemanticSearch()
                             }
                           }}
+                          className="pl-9 min-h-[70px] resize-none"
+                          rows={2}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="搜索案例：行业、场景、硬件型号..."
+                          value={caseSearch}
+                          onChange={(e) => setCaseSearch(e.target.value)}
                           className="pl-9 h-9"
                         />
-                      </div>
-                      <Select
-                        value={caseSearchType}
-                        onValueChange={(value: "keyword" | "semantic") => setCaseSearchType(value)}
-                      >
-                        <SelectTrigger className="w-[120px] h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="keyword">
-                            <div className="flex items-center">
-                              <Filter className="h-4 w-4 mr-2" />
-                              关键词
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="semantic">
-                            <div className="flex items-center">
-                              <Brain className="h-4 w-4 mr-2" />
-                              语义
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {/* CHANGE: Remove semantic search button, enter key directly opens dialog */}
-                    </div>
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button onClick={() => setShowNewCase(true)} className="bg-[#2E6BE6] hover:bg-[#0036C3] shadow-md">
-                      <Plus className="h-4 w-4 mr-2" />
-                      新增案例
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowHistoryDrawer(true)}
-                      className="border-[#2E6BE6] text-[#2E6BE6] hover:bg-blue-50"
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      历史记录
-                    </Button>
-                  </div>
+                  <Select
+                    value={caseSearchType}
+                    onValueChange={(value: "keyword" | "semantic") => setCaseSearchType(value)}
+                  >
+                    <SelectTrigger className="w-[120px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="keyword">
+                        <div className="flex items-center">
+                          <Filter className="h-4 w-4 mr-2" />
+                          关键词
+                        </div>
+                      </SelectItem>
+                      {/* CHANGE: Change "语义" to "需求搜索" */}
+                      <SelectItem value="semantic">
+                        <div className="flex items-center">
+                          <Brain className="h-4 w-4 mr-2" />
+                          需求搜索
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={() => setShowNewCase(true)} className="bg-[#2E6BE6] hover:bg-[#0036C3] shadow-md">
+                  <Plus className="h-4 w-4 mr-2" />
+                  新增案例
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowHistoryDrawer(true)}
+                  className="border-[#2E6BE6] text-[#2E6BE6] hover:bg-blue-50"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  历史记录
+                </Button>
               </div>
             </div>
           )}
