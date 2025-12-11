@@ -77,13 +77,12 @@ export function AIReasoningDialog({
   const [isStreamingSolution, setIsStreamingSolution] = useState(false)
   const [showCaseDetail, setShowCaseDetail] = useState<Case | null>(null)
 
-  // 模拟外部知识库（华为昇腾社区）
   const externalKnowledge: KnowledgeSource[] = [
     {
       id: "ext-1",
       title: "昇腾AI处理器在智能交通场景的应用实践",
       type: "external",
-      url: "https://www.hiascend.com/zh/solutions/traffic",
+      url: "https://www.hiascend.com/marketplace/solution/detail/2290",
       relevance: 95,
       summary: "详细介绍了昇腾310在路口监控、车牌识别等场景的部署方案和性能数据",
     },
@@ -91,7 +90,7 @@ export function AIReasoningDialog({
       id: "ext-2",
       title: "Atlas 800训练服务器技术白皮书",
       type: "external",
-      url: "https://www.hiascend.com/zh/hardware/atlas-800",
+      url: "https://www.hiascend.com/marketplace/solution/detail/2421",
       relevance: 88,
       summary: "Atlas 800系列的完整技术规格、最佳实践和典型配置方案",
     },
